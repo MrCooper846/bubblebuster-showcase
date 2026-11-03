@@ -43,3 +43,7 @@ The demo applies the showcase baseline automatically. To inspect that step alone
 - [Code tour and scope](docs/code-tour.md) separates retained services, adaptations and fixture code, with links to the constraints and negative tests.
 
 The executable includes local storage, reviewed synthetic capex, system-known history, financial shocks and a frozen input contract. A narrow supplier-rule example demonstrates a refusal. Public-time replay, a live exposure graph, private analytical rules, forecast admission and outcome evaluation are outside this slice. A future forecasting method could consume the cutoff-specific manifest before separately recording an outcome. No forecast or accuracy score is produced here.
+
+## Rights
+
+Copyright © 2026 MrCooper846. You may inspect this engineering snapshot and run the demo and tests locally for evaluation. All other rights in the original showcase material are reserved. Third-party dependencies are governed by their respective licences.
