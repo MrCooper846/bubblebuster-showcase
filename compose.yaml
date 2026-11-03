@@ -1,0 +1,29 @@
+name: bubblebuster-showcase
+services:
+  db:
+    image: postgres:17.11-alpine
+    network_mode: none
+    entrypoint: ["/bin/sh", "-ec", 'export POSTGRES_PASSWORD="$(cat /proc/sys/kernel/random/uuid)"; exec docker-entrypoint.sh postgres -c listen_addresses=']
+    environment:
+      POSTGRES_DB: showcase
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "showcase"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - database:/var/lib/postgresql/data
+      - socket:/var/run/postgresql
+  app:
+    build: .
+    network_mode: none
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - artifacts:/archive
+      - socket:/var/run/postgresql
+volumes:
+  database:
+  socket:
+  artifacts:

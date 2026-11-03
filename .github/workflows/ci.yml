@@ -1,0 +1,17 @@
+name: Engineering snapshot
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
+      - run: docker compose run --rm app ruff format --check .
+      - run: docker compose run --rm app ruff check .
+      - run: docker compose run --rm app python -m database
+      - run: docker compose run --rm app
+      - run: docker compose run --rm app pytest -q
+      - if: always()
+        run: docker compose down -v

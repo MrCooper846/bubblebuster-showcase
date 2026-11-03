@@ -1,0 +1,4 @@
+SQLAlchemy==2.0.44
+psycopg[binary]==3.2.12
+pytest==8.4.2
+ruff==0.14.3
