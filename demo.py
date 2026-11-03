@@ -20,11 +20,11 @@ def day(n):
 
 
 def statement(session, store, version):
-    published, acquired, reviewed = {1: (2, 4, 5), 2: (8, 11, 12)}[version]
+    published, acquired, reviewed, promoted = {1: (2, 4, 5, 5), 2: (8, 11, 11, 12)}[version]
     content = (Path(__file__).parent / "fixtures" / f"statement-{version}.txt").read_bytes()
     doc_id = ingest(session, store, content, version, day(published), day(acquired))
     approve(session, store, doc_id, ANALYST, day(reviewed))
-    return promote(session, store, doc_id)
+    return promote(session, store, doc_id, simulated_promotion_at=day(promoted))
 
 
 def state(session, cutoff):
@@ -74,7 +74,7 @@ def main():
         try:
             revenue_share_step(Decimal(-10), "PERCENT", None, "PERCENT")
         except RuleStop as error:
-            print(f"Supplier effect withheld: {error}")
+            print(f"Separate synthetic supplier example (no exposure lookup): {error}")
         print(f"Frozen input {digest}: {payload}")
 
 

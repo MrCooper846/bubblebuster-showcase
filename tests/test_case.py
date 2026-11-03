@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -50,6 +51,46 @@ def test_replay_and_manifest_survive_correction(db, store):
     assert freeze(db, day(12))[0] != frozen[0]
     with pytest.raises(ValueError, match="no admissible"):
         freeze(db, day(3))
+
+
+def test_review_without_promotion_preserves_earlier_state(db, store):
+    first = statement(db, store, 1)
+    data = Path("fixtures/statement-2.txt").read_bytes()
+    doc = ingest(db, store, data, 2, day(8), day(10))
+    approve(db, store, doc, ANALYST, day(10))
+    frozen = freeze(db, day(11))
+    assert state(db, day(11)).id == first.id
+    with pytest.raises(ValueError, match="after approval"):
+        promote(db, store, doc, simulated_promotion_at=day(9))
+    second = promote(db, store, doc, simulated_promotion_at=day(12))
+    assert first.known_to == second.known_from == day(12)
+    assert state(db, day(11)).id == first.id
+    assert freeze(db, day(11)) == frozen
+    assert state(db, day(12)).id == second.id
+    assert promote(db, store, doc, simulated_promotion_at=day(13)).known_from == day(12)
+
+
+def test_default_promotion_uses_database_time(db, store):
+    before = db.scalar(text("SELECT clock_timestamp()"))
+    review = before - timedelta(days=1)
+    data = Path("fixtures/statement-1.txt").read_bytes()
+    doc = ingest(db, store, data, 1, review, review)
+    approve(db, store, doc, ANALYST, review)
+    fact = promote(db, store, doc)
+    assert before <= fact.known_from <= db.scalar(text("SELECT clock_timestamp()"))
+    assert state(db, review) is None
+
+
+def test_forecast_horizon_uses_utc(db, store):
+    statement(db, store, 1)
+    # The two supplied offsets fall on opposite local dates around UTC year-end.
+    last = datetime.fromisoformat("2032-01-01T00:59:59.999999+01:00")
+    first_closed = datetime.fromisoformat("2031-12-31T23:00:00-01:00")
+    assert freeze(db, last) == freeze(db, last.astimezone(UTC))
+    for cutoff in (first_closed, first_closed + timedelta(days=1)):
+        with pytest.raises(ValueError, match="after the target horizon"):
+            freeze(db, cutoff)
+    assert db.scalar(text("SELECT count(*) FROM frozen_input")) == 1
 
 
 def test_idempotent_processing(db, store):
@@ -125,3 +166,18 @@ def test_transmission_refusals():
         revenue_share_step(-10, "USD", 20, "PERCENT")
     assert revenue_share_step(-10, "PERCENT", 20, "PERCENT") == -2
     assert revenue_share_step(-10, "PERCENT", 0, "PERCENT") == 0
+    assert revenue_share_step(-10, "PERCENT", 100, "PERCENT") == -10
+
+
+@pytest.mark.parametrize(
+    "share", ["-0.01", "100.01", "NaN", "sNaN", "Infinity", "-Infinity", "bad"]
+)
+def test_invalid_revenue_share(share):
+    with pytest.raises(RuleStop, match="INVALID_REVENUE_SHARE"):
+        revenue_share_step(-10, "PERCENT", share, "PERCENT")
+
+
+@pytest.mark.parametrize("shock", ["NaN", "Infinity", "-Infinity", "bad"])
+def test_invalid_shock(shock):
+    with pytest.raises(RuleStop, match="INVALID_SHOCK"):
+        revenue_share_step(shock, "PERCENT", 20, "PERCENT")

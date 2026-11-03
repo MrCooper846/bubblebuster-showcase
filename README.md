@@ -12,7 +12,7 @@ Jan 12: 15 USD_MILLION | fact c7e24669-0e6e-592d-a1b5-42e3c1a64646
 Jan 06 replay: 12 USD_MILLION | fact b276c465-43e9-542e-95ad-3f355ebacf27
 2031-01-06 | baseline * (1 + CAPEX_PERCENT / 100) | +10% | 12000000 -> 13200000.0 USD | input b276c465-43e9-542e-95ad-3f355ebacf27
 Blocked scenario: REVENUE baseline is unavailable at the cutoff
-Supplier effect withheld: UNKNOWN_EXPOSURE_VALUE
+Separate synthetic supplier example (no exposure lookup): UNKNOWN_EXPOSURE_VALUE
 ```
 
 ```text

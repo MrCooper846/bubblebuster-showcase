@@ -92,19 +92,22 @@ def approve(session, store, doc_id, reviewer, when):
     )
 
 
-def promote(session, store, doc_id):
+def promote(session, store, doc_id, *, simulated_promotion_at=None):
     lock_subject(session)
     previous = session.scalar(
         select(FinancialFact).where(FinancialFact.source_document_id == doc_id)
     )
     if previous:
         return previous
-    when = session.scalar(
+    reviewed_at = session.scalar(
         text("SELECT reviewed_at FROM approval WHERE document_id=:id"), {"id": doc_id}
     )
-    if when is None:
+    if reviewed_at is None:
         raise ValueError("proposal must be approved before promotion")
     proposal = validate(session, store, doc_id)
+    when = simulated_promotion_at or session.scalar(text("SELECT clock_timestamp()"))
+    if when.utcoffset() is None or when < reviewed_at:
+        raise ValueError("promotion must be timezone-aware and at or after approval")
     current = session.scalar(
         select(FinancialFact).where(
             FinancialFact.financial_period_id == PERIOD,
@@ -114,7 +117,7 @@ def promote(session, store, doc_id):
     )
     if current:
         if when <= current.known_from:
-            raise ValueError("supersession requires a later review")
+            raise ValueError("supersession requires a later promotion")
         current.known_to = when
         session.flush()
     fact = FinancialFact(

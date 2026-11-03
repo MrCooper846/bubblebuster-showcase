@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from datetime import UTC
+from datetime import UTC, date
 
 from sqlalchemy import select, text
 
@@ -11,9 +11,15 @@ from packages.db.models import Document, FinancialFact
 from temporal import known_at
 
 
+HORIZON_END = date(2031, 12, 31)
+
+
 def freeze(session, cutoff):
     if cutoff.utcoffset() is None:
         raise ValueError("cutoff needs a timezone")
+    cutoff = cutoff.astimezone(UTC)
+    if cutoff.date() > HORIZON_END:
+        raise ValueError("forecast cutoff falls after the target horizon")
     rows = session.execute(
         known_at(
             select(FinancialFact.id, Document.sha256)
@@ -26,8 +32,8 @@ def freeze(session, cutoff):
     payload = {
         "subject_id": str(SUBJECT),
         "target": "next fiscal year's capex in USD",
-        "horizon_end": "2031-12-31",
-        "cutoff": cutoff.astimezone(UTC).isoformat(),
+        "horizon_end": HORIZON_END.isoformat(),
+        "cutoff": cutoff.isoformat(),
         "methodology": "reviewed-capex-inputs/v1",
         "inputs": [{"fact_id": str(fid), "source_sha256": sha} for fid, sha in rows],
     }
